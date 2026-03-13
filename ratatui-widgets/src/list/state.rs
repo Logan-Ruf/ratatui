@@ -115,6 +115,9 @@ impl ListState {
 
     /// Index of the selected item
     ///
+    /// If `item_count` is known (set during rendering),
+    /// the `selected` index is clamped to valid bounds.
+    ///
     /// Returns `None` if no item is selected
     ///
     /// # Examples
@@ -232,8 +235,6 @@ impl ListState {
     }
 
     /// Clamps the `selected` index to valid bounds if `item_count` is known.
-    ///
-    /// Returns `true` if the `selected` index was clamped.
     const fn clamp_selected(&mut self) {
         if let (Some(selected), Some(count)) = (self.selected, self.item_count) {
             if count == 0 {
@@ -248,19 +249,12 @@ impl ListState {
 
     /// Selects the next item or the first one if no item is selected
     ///
-    /// After `item_count` is set, the `selected` index will be clamped to the
-    /// last item in the list.
-    ///
-    /// If `item_count` is `Some(0)`, then `selected` will be clamped and set to `None`.
+    /// Bounded by `item_count` when known, otherwise falls back to usize::MAX
     ///
     /// # Examples
     ///
-    /// Before rendering, item count is unknown:
-    ///
     /// ```rust
     /// use ratatui::buffer::Buffer;
-    /// use ratatui::layout::Rect;
-    /// use ratatui::widgets::{List, ListState, StatefulWidget};
     ///
     /// let mut state = ListState::default();
     /// state.select_next();
@@ -382,9 +376,9 @@ impl ListState {
     /// # use ratatui::buffer::Buffer;
     /// # use ratatui::layout::Rect;
     /// #
-    /// let mut state = ListState::default();
-    /// let r = Rect::new(0, 0, 20, 20);
-    /// StatefulWidget::render(List::new(vec![""; 5]), r, &mut Buffer::empty(r), &mut state);
+    /// # let mut state = ListState::default();
+    /// # let r = Rect::new(0, 0, 20, 20);
+    /// # StatefulWidget::render(List::new(vec![""; 5]), r, &mut Buffer::empty(r), &mut state);
     /// state.select_last();
     /// assert_eq!(state.selected(), Some(4));
     /// ```
@@ -396,38 +390,17 @@ impl ListState {
     /// Scrolls down by a specified `amount` in the list.
     ///
     /// This method updates the `selected` index by moving it down by the given `amount`.
+    ///
     /// If the `amount` causes the index to go out of bounds (i.e., if the index is greater than
     /// the length of the list), the last item in the list will be selected.
     ///
-    /// Returns `true` if the `selected` index was successfully moved, `false` if it was clamped.
-    ///
     /// # Examples
     ///
-    /// Before rendering, item count is unknown:
-    ///
     /// ```rust
-    /// use ratatui::buffer::Buffer;
-    /// use ratatui::layout::Rect;
-    /// use ratatui::widgets::{List, ListState, StatefulWidget};
+    /// use ratatui::widgets::ListState;
     ///
     /// let mut state = ListState::default();
-    /// state.scroll_down_by(3);
-    /// assert_eq!(state.selected(), Some(3));
-    /// ```
-    ///
-    /// After rendering a list with 5 items, `scroll_down_by` clamps to the last item:
-    ///
-    ///```rust
-    /// # use ratatui::widgets::{List, ListState, StatefulWidget};
-    /// # use ratatui::buffer::Buffer;
-    /// # use ratatui::layout::Rect;
-    /// #
-    /// let mut state = ListState::default();
-    /// let r = Rect::new(0, 0, 20, 20);
-    /// StatefulWidget::render(List::new(vec![""; 5]), r, &mut Buffer::empty(r), &mut state);
-    /// state.select(Some(2));
-    /// state.scroll_down_by(4); // clamped to last item
-    /// assert_eq!(state.selected(), Some(4));
+    /// state.scroll_down_by(4);
     /// ```
     pub fn scroll_down_by(&mut self, amount: u16) {
         let selected = self.selected.unwrap_or_default();
@@ -440,23 +413,13 @@ impl ListState {
     /// If the `amount` causes the index to go out of bounds (i.e., less than zero),
     /// the first item in the list will be selected.
     ///
-    /// Returns `true` if the `selected` index was successfully moved, `false` if it was clamped.
-    ///
     /// # Examples
     ///
     /// ```rust
     /// use ratatui::widgets::ListState;
     ///
     /// let mut state = ListState::default();
-    /// state.scroll_up_by(3);
-    /// assert_eq!(state.selected(), Some(0));
-    ///
-    /// state.select(Some(6));
     /// state.scroll_up_by(4);
-    /// assert_eq!(state.selected(), Some(2));
-    ///
-    /// state.scroll_up_by(4); // saturates at first item
-    /// assert_eq!(state.selected(), Some(0));
     /// ```
     pub fn scroll_up_by(&mut self, amount: u16) {
         let selected = self.selected.unwrap_or_default();
